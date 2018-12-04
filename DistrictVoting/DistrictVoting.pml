@@ -36,7 +36,7 @@ inline requestCS(nid) {
 	int i = 0;
 	do
 	::(i<len(nodes[nid])) -> d_step { c[neighb[i]]!REQUEST; i++; }
-	:: (i>=len(nodes[nid])) -> d_step { csTimes++; break; }
+	:: else -> d_step { csTimes++; break; }
 	od;
 }
 
@@ -64,6 +64,6 @@ init {
 	int i = 0;
 	do
 	:: (i < N) -> run Processor(i); i++;
-	:: (i >= N) -> break;
+	:: else -> break;
 	od;
 }
