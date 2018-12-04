@@ -24,6 +24,7 @@ Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
 bit start = 0;
+int totalCSTimes = 0;
 
 /* ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) } */
 
@@ -35,6 +36,15 @@ inline updateNumInCS() {
 	    for (i : 0 .. (N - 1)) {
 	    	numInCS = numInCS + nodes[i].inCS;
 	    }
+	}
+}
+
+inline updateTotalCSTimes() {
+	atomic {
+		totalCSTimes = 0;
+		for (i : 0 .. (N - 1)) {
+			totalCSTimes = totalCSTimes + nodes[i].csTimes;
+		}
 	}
 }
 
@@ -115,13 +125,16 @@ inline processRelease(nid, source) {
 }
 
 inline requestCS(nid) {
+	atomic {
 		int i = 0;
 		currentTime++;
 		do
 		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
 		:: else -> break;
 		od;
-		skip;
+		nodes[nid].csTimes++;
+		updateTotalCSTimes();
+	}
 }
 
 inline exitCS(nid) {
@@ -146,12 +159,13 @@ proctype Processor(int nid) {
 		if
 		:: type == REQUEST -> processRequest(nid, source, ts);
 		:: type == GRANT -> processGrant(nid, source);
-		:: type == RELEASE -> end: nodes[nid].vote = -1; 
-		:: else -> skip;
+		:: type == RELEASE -> nodes[nid].vote = -1;
 		fi
-	:: (nodes[nid].csTimes < reqLimit) -> d_step{ nodes[nid].csTimes++;requestCS(nid); }
+	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
 	:: (nodes[nid].inCS == 1) -> exitCS(nid); 
-	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);   
+	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
+	:: (totalCSTimes == N && nodes[nid].reqCount == 0 && len(c[nid]) == 0) ->
+		end: skip;
 	od;
 }
 
