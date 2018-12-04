@@ -61,6 +61,7 @@ inline insertRequest(nid, src, ts) {
 				nodes[nid].reqNodes[i] = src;
 				nodes[nid].reqTimestamp[i] = ts;
 				nodes[nid].reqCount = nodes[nid].reqCount + 1;
+			:: else -> skip;
 			fi
 			i++;
 		:: else -> break;
@@ -96,6 +97,7 @@ inline processGrant(nid, src) {
 		:: nodes[nid].voteCount == neighborNum ->
 			nodes[nid].inCS = 1;
 			updateNumInCS();
+		:: else -> skip;
 		fi;
 	}
 }
