@@ -28,7 +28,7 @@ inline processGrant(nid) {
 
 }
 
-inline processRelease(nid) {
+inline processRelease(nid, source) {
 
 }
 
@@ -46,14 +46,14 @@ inline exitCS(nid) {
 
 proctype Processor(int nid) {
 	mtype type;
-	int x;
+	int source;
 	int ts;
 	do
-	:: (len(c[nid]) > 0) -> c[nid]?type(x, ts);
+	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
 		:: type == REQUEST -> processRequest(nid);
 		:: type == GRANT -> processGrant(nid);
-		:: type == RELEASE -> processRelease(nid);
+		:: type == RELEASE -> processRelease(nid, source);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
