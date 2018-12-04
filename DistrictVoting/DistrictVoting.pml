@@ -11,7 +11,7 @@ typedef Node {
 	bit inCS;				/* If it's in CS 1, otherwise 0 */
 	int reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
 	int reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
-	int voted;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	int vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	int voteCount;			/* The number of votes it has got for its requests. */
 	int neighb[neighborNum];/* Neighbors in the same district */
 };
@@ -29,7 +29,8 @@ inline processGrant(nid) {
 }
 
 inline processRelease(nid, source) {
-
+	nodes[nid].vote = -1;
+	
 }
 
 inline requestCS(nid) {
