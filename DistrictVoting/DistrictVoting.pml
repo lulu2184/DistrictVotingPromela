@@ -15,7 +15,7 @@ typedef Node {
 	int vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	int voteCount;			/* The number of votes it has got for its requests. */
 	int neighb[neighborNum];/* Neighbors in the same district */
-	int selectedReq;
+	int earliestReqIndex;
 };
 
 chan c[N] = [neighborNum] of {mtype, int, int};
@@ -35,12 +35,35 @@ inline getEarliestRequest(nid) {
 		fi
 	:: else -> break;
 	od;
-	nodes[nid].selectedReq = selected;
+	nodes[nid].earliestReqIndex = selected;
+}
+
+inline insertRequest(nid, src, ts) {
+	int i = 0;
+	do
+	:: (i < N) ->
+		if
+		:: (nodes[nid].reqNodes[i] < 0) ->
+			nodes[nid].reqNodes[i] = src;
+			nodes[nid].reqTimestamp[i] = ts;
+		fi
+	:: else -> break;
+	od;
+}
+
+inline grant(nid, src) {
+	nodes[nid].vote = src;
+	c[src]!GRANT(nid, 0);
 }
 
 inline processRequest(nid, src, ts) {
 	d_step {
 		getEarliestRequest(nid);
+		if
+		:: (nodes[nid].vote < 0 && (nodes[nid].earliestReqIndex < 0 || ts < nodes[nid].reqTimestamp[nodes[nid].earliestReqIndex])) ->
+			grant(nid, src);
+		:: else -> insertRequest(nid, src, ts);
+		fi;
 	}
 }
 
@@ -72,7 +95,7 @@ proctype Processor(int nid) {
 	do
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
-		:: type == REQUEST -> processRequest(nid);
+		:: type == REQUEST -> processRequest(nid, source, ts);
 		:: type == GRANT -> processGrant(nid);
 		:: type == RELEASE -> processRelease(nid, source);
 		fi
