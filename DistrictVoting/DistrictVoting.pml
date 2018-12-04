@@ -19,7 +19,7 @@ typedef Node {
 	int reqCount;
 };
 
-chan c[N] = [neighborNum] of {mtype, int, int};
+chan c[N] = [N * 10] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
