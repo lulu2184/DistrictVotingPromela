@@ -5,6 +5,7 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define N (n * m)
 #define neighborNum (m + n - 2)
 #define reqLimit 1
+#define maxTimestamp 10000
 
 typedef Node {
 	int csTimes;			/* How many times has it requested the critical section. */
@@ -14,14 +15,56 @@ typedef Node {
 	int vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	int voteCount;			/* The number of votes it has got for its requests. */
 	int neighb[neighborNum];/* Neighbors in the same district */
+	int earliestReqIndex;
 };
 
 chan c[N] = [neighborNum] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 
-inline processRequest(nid) {
+inline getEarliestRequest(nid) {
+	int i = 0;
+	int minTs = maxTimestamp;
+	int selected = -1;
+	do
+	:: (i < N) ->
+		if
+		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
+			minTs = nodes[nid].reqTimestamp[i];
+			selected = i;
+		fi
+	:: else -> break;
+	od;
+	nodes[nid].earliestReqIndex = selected;
+}
 
+inline insertRequest(nid, src, ts) {
+	int i = 0;
+	do
+	:: (i < N) ->
+		if
+		:: (nodes[nid].reqNodes[i] < 0) ->
+			nodes[nid].reqNodes[i] = src;
+			nodes[nid].reqTimestamp[i] = ts;
+		fi
+	:: else -> break;
+	od;
+}
+
+inline grant(nid, src) {
+	nodes[nid].vote = src;
+	c[src]!GRANT(nid, 0);
+}
+
+inline processRequest(nid, src, ts) {
+	d_step {
+		getEarliestRequest(nid);
+		if
+		:: (nodes[nid].vote < 0 && (nodes[nid].earliestReqIndex < 0 || ts < nodes[nid].reqTimestamp[nodes[nid].earliestReqIndex])) ->
+			grant(nid, src);
+		:: else -> insertRequest(nid, src, ts);
+		fi;
+	}
 }
 
 inline processGrant(nid, source) {
@@ -29,7 +72,7 @@ inline processGrant(nid, source) {
 
 inline processRelease(nid, source) {
 	nodes[nid].vote = -1;
-	
+
 }
 
 inline requestCS(nid) {
@@ -55,8 +98,9 @@ proctype Processor(int nid) {
 	do
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
-		:: type == REQUEST -> processRequest(nid);
-		:: type == GRANT -> processGrant(nid, source);
+
+		:: type == REQUEST -> processRequest(nid, source, ts);
+		:: type == GRANT -> processGrant(nid, , source);
 		:: type == RELEASE -> processRelease(nid, source);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
@@ -64,7 +108,44 @@ proctype Processor(int nid) {
 	od;
 }
 
+inline setup() {
+	/* init nodes */
+	int nid = 0;
+	do
+	::	(nid < N) ->
+		nodes[nid].csTime = 0;
+		nodes[nid].inCS = 0;
+
+		int i = 0;
+		do
+		::	(i < N) ->
+			nodes[nid].reqNodes[i] = -1;
+			i++;
+		::	else -> break;
+		od;
+
+		nodes[nid].vote = -1;
+		nodes[nid].voteCount = 0;
+		nid++;
+	::	else -> break;
+	od;
+
+	/* init node neighbors */
+	nodes[0].neighb[0] = 1;
+	nodes[0].neighb[1] = 2;
+	nodes[1].neighb[0] = 0;
+	nodes[1].neighb[1] = 3;
+	nodes[2].neighb[0] = 0;
+	nodes[2].neighb[1] = 3;
+	nodes[3].neighb[0] = 1;
+	nodes[3].neighb[1] = 2;
+}
+
 init {
+	d_step {
+		setup();
+	}
+
 	int i = 0;
 	do
 	:: (i < N) -> run Processor(i); i++;
