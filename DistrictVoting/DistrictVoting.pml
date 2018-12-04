@@ -21,6 +21,16 @@ typedef Node {
 chan c[N] = [neighborNum] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
+int numInCS = 0;
+
+/* For loop to sum inCS field for all nodes. */
+inline updateNumInCS() {
+	numInCS = 0;
+	int i;
+    for (i : 0 .. (N - 1)) {
+    	numInCS = numInCS + nodes[i].inCS;
+    }
+}
 
 inline getEarliestRequest(nid) {
 	int i = 0;
@@ -58,17 +68,29 @@ inline grant(nid, src) {
 
 inline processRequest(nid, src, ts) {
 	d_step {
+		insertRequest(nid, src, ts);
+	}
+}
+
+inline tryGrant(nid) {
+	d_step {
 		getEarliestRequest(nid);
 		if
-		:: (nodes[nid].vote < 0 && (nodes[nid].earliestReqIndex < 0 || ts < nodes[nid].reqTimestamp[nodes[nid].earliestReqIndex])) ->
+		:: (nodes[nid].earliestReqIndex >= 0) ->
 			grant(nid, src);
-		:: else -> insertRequest(nid, src, ts);
 		fi;
 	}
 }
 
-inline processGrant(nid) {
-
+inline processGrant(nid, src) {
+	d_step {
+		nodes[nid].voteCount++;
+		if
+		:: nodes[nid].voteCount == neighborNum ->
+			nodes[nid].inCS = 1;
+			updateNumInCS();
+		fi;
+	}
 }
 
 inline processRelease(nid, source) {
@@ -96,11 +118,12 @@ proctype Processor(int nid) {
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
 		:: type == REQUEST -> processRequest(nid, source, ts);
-		:: type == GRANT -> processGrant(nid);
+		:: type == GRANT -> processGrant(nid, source);
 		:: type == RELEASE -> processRelease(nid, source);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
+	:: (nodes[nid].vote == -1) -> tryGrant(nid);
 	od;
 }
 
