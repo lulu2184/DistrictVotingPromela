@@ -99,19 +99,23 @@ inline processRelease(nid, source) {
 }
 
 inline requestCS(nid) {
-	int i = 0;
-	do
-	::(i<neighborNum) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
-	:: else -> nodes[nid].csTimes++; break;
-	od;
+	d_step {
+		int i = 0;
+		do
+		::(i<neighborNum) -> currentTime++;c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
+		:: else -> nodes[nid].csTimes++; break;
+		od;
+	}
 }
 
 inline exitCS(nid) {
-	int i = 0;
-	do
-	::(i<neighborNum) -> d_step { c[nodes[nid].neighb[i]]!RELEASE; i++; }
-	:: else -> nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break;
-	od;
+	d_step {
+		int i = 0;
+		do
+		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid); i++;
+		:: else -> nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break;
+		od;
+	}
 }
 
 proctype Processor(int nid) {
