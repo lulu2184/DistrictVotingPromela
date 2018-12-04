@@ -19,20 +19,23 @@ typedef Node {
 	int reqCount;
 };
 
-chan c[N] = [neighborNum] of {mtype, int, int};
+chan c[N] = [neighborNum * 3] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
+bit start = 0;
 
 /* ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) } */
 
 /* For loop to sum inCS field for all nodes. */
 inline updateNumInCS() {
-	numInCS = 0;
-	int i;
-    for (i : 0 .. (N - 1)) {
-    	numInCS = numInCS + nodes[i].inCS;
-    }
+	atomic {
+		numInCS = 0;
+		int i;
+	    for (i : 0 .. (N - 1)) {
+	    	numInCS = numInCS + nodes[i].inCS;
+	    }
+	}
 }
 
 inline getEarliestRequest(nid) {
@@ -54,7 +57,7 @@ inline getEarliestRequest(nid) {
 }
 
 inline insertRequest(nid, src, ts) {
-	d_step {
+	atomic {
 		int i = 0;
 		do
 		:: (i < N) ->
@@ -84,7 +87,7 @@ inline processRequest(nid, src, ts) {
 }
 
 inline tryGrant(nid) {
-	d_step {
+	atomic {
 		getEarliestRequest(nid);
 		if
 		:: (nodes[nid].earliestReqIndex >= 0) ->
@@ -95,7 +98,7 @@ inline tryGrant(nid) {
 }
 
 inline processGrant(nid, src) {
-	d_step {
+	atomic {
 		nodes[nid].voteCount++;
 		if
 		:: (nodes[nid].voteCount == neighborNum) ->
@@ -122,7 +125,7 @@ inline requestCS(nid) {
 }
 
 inline exitCS(nid) {
-	d_step {
+	atomic {
 		int i = 0;
 		do
 		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid, 0); i++;
@@ -134,6 +137,7 @@ inline exitCS(nid) {
 }
 
 proctype Processor(int nid) {
+	start == 1;
 	mtype type;
 	int source;
 	int ts;
@@ -141,13 +145,13 @@ proctype Processor(int nid) {
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
 		:: type == REQUEST -> processRequest(nid, source, ts);
-		:: else -> skip;
 		:: type == GRANT -> processGrant(nid, source);
-		:: type == RELEASE -> end: nodes[nid].vote = -1;
+		:: type == RELEASE -> end: nodes[nid].vote = -1; 
+		:: else -> skip;
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> d_step{ nodes[nid].csTimes++;requestCS(nid); }
-	:: (nodes[nid].inCS == 1) -> exitCS(nid);
-	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid); 
+	:: (nodes[nid].inCS == 1) -> exitCS(nid); 
+	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);   
 	od;
 }
 
@@ -189,13 +193,16 @@ inline setup() {
 }
 
 init {
-	d_step{
+	atomic {
 		setup();
 	}
 
-	int i = 0;
-	do
-	:: (i < N) -> run Processor(i); i++;
-	:: else -> break;
-	od;
+	atomic {
+		int i = 0;
+		do
+		:: (i < N) -> run Processor(i); i++;
+		:: else -> break;
+		od;
+		start = 1;
+	}
 }
