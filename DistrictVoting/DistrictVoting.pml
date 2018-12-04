@@ -24,8 +24,7 @@ inline processRequest(nid) {
 
 }
 
-inline processGrant(nid) {
-
+inline processGrant(nid, source) {
 }
 
 inline processRelease(nid, source) {
@@ -42,7 +41,11 @@ inline requestCS(nid) {
 }
 
 inline exitCS(nid) {
-
+	int i = 0;
+	do
+	::(i<len(nodes[nid])) -> d_step { c[neighb[i]]!RELEASE; i++; }
+	:: else -> d_step { nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break; }
+	od;
 }
 
 proctype Processor(int nid) {
@@ -53,7 +56,7 @@ proctype Processor(int nid) {
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
 		:: type == REQUEST -> processRequest(nid);
-		:: type == GRANT -> processGrant(nid);
+		:: type == GRANT -> processGrant(nid, source);
 		:: type == RELEASE -> processRelease(nid, source);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
