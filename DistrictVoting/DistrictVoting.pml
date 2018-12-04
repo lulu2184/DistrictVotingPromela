@@ -3,18 +3,20 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define n 2
 #define m 2
 #define N (n * m)
+#define neighborNum (m + n - 2)
 #define reqLimit 1
 
 typedef Node {
-	int csTimes; /* How many times has it requested the critical section. */
-	bit inCS;    /* If it's in CS - 1, otherwise 0 */
-	int reqNodes[N];  /* A queue for node which has asked this node for CS access. (-1 for empty slot) */
-	int reqTimestamp[N]; /* Timestamp for requests in the queue (reqNodes) */
-	int voted;           /* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
-	int voteCount;       /* The number of votes it has got for its requests. */
-}
+	int csTimes;			/* How many times has it requested the critical section. */
+	bit inCS;				/* If it's in CS 1, otherwise 0 */
+	int reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	int reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
+	int voted;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	int voteCount;			/* The number of votes it has got for its requests. */
+	int neighb[neighborNum];/* Neighbors in the same district */
+};
 
-chan c[N] = [m + n - 2] of {mtype, int, int};
+chan c[N] = [neighborNum] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 
