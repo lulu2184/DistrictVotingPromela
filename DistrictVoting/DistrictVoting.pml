@@ -101,7 +101,7 @@ inline processRelease(nid, source) {
 inline requestCS(nid) {
 	int i = 0;
 	do
-	::(i<len(nodes[nid])) -> d_step { c[neighb[i]]!REQUEST; i++; }
+	::(i<len(nodes[nid])) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
 	:: else -> d_step { nodes[nid].csTimes++; break; }
 	od;
 }
@@ -109,7 +109,7 @@ inline requestCS(nid) {
 inline exitCS(nid) {
 	int i = 0;
 	do
-	::(i<len(nodes[nid])) -> d_step { c[neighb[i]]!RELEASE; i++; }
+	::(i<len(nodes[nid])) -> d_step { c[nodes[nid].neighb[i]]!RELEASE; i++; }
 	:: else -> d_step { nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break; }
 	od;
 }
