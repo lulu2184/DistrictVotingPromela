@@ -24,6 +24,8 @@ Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
 
+/* ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) } */
+
 /* For loop to sum inCS field for all nodes. */
 inline updateNumInCS() {
 	numInCS = 0;
@@ -115,8 +117,9 @@ inline requestCS(nid) {
 		currentTime++;
 		do
 		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
-		:: else -> nodes[nid].csTimes++; break;
+		:: else -> break;
 		od;
+		nodes[nid].csTimes++;
 	}
 }
 
@@ -125,8 +128,10 @@ inline exitCS(nid) {
 		int i = 0;
 		do
 		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid); i++;
-		:: else -> nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break;
+		:: else -> break;
 		od;
+		nodes[nid].inCS = 0;
+		nodes[nid].voteCount = 0; 
 	}
 }
 
