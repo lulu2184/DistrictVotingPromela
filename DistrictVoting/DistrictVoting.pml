@@ -9,38 +9,40 @@ chan c[N] = [m + n - 2] of {mtype, int, int};
 int csTimes[N];
 bit inCS[N];
 
-inline processRequest(pid) {
+inline processRequest(nid) {
 
 }
 
-inline processGrant(pid) {
+inline processGrant(nid) {
 
 }
 
-inline processRelease(pid) {
+inline processRelease(nid) {
 
 }
 
-inline requestCS(pid) {
+inline requestCS(nid) {
 
 }
 
-inline exitCS(pid) {
+inline exitCS(nid) {
 
 }
 
-proctype Processor(int pid, ) {
+proctype Processor(int nid) {
 	mtype type;
+	int x;
+	int ts;
 	do
-	:: (len(c[pid]) > 0) -> c[pid]?type(x, ts);
+	:: (len(c[nid]) > 0) -> c[nid]?type(x, ts);
 		if
-		:: type == REQUEST -> processRequest(pid);
-		:: type == GRANT -> processGrant(pid);
-		:: type == RELEASE -> processRelease(pid);
+		:: type == REQUEST -> processRequest(nid);
+		:: type == GRANT -> processGrant(nid);
+		:: type == RELEASE -> processRelease(nid);
 		fi
-	:: (csTimes[pid] < reqLimit) -> requestCS(pid);
-	:: (inCS[pid] == 1) -> exitCS(pid);
-	od
+	:: (csTimes[nid] < reqLimit) -> requestCS(nid);
+	:: (inCS[nid] == 1) -> exitCS(nid);
+	od;
 }
 
 init {
@@ -48,5 +50,5 @@ init {
 	do
 	:: (i < N) -> run Processor(i); i++;
 	:: (i >= N) -> break;
-	od
+	od;
 }
