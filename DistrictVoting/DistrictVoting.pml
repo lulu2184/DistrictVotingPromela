@@ -38,9 +38,11 @@ inline getEarliestRequest(nid) {
 	int selected = -1;
 	do
 	:: (i < N) ->
-		(nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
+		if
+		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
 			minTs = nodes[nid].reqTimestamp[i];
 			selected = i;
+		fi
 	:: else -> break;
 	od;
 	nodes[nid].earliestReqIndex = selected;
@@ -51,9 +53,11 @@ inline insertRequest(nid, src, ts) {
 		int i = 0;
 		do
 		:: (i < N) ->
-			(nodes[nid].reqNodes[i] < 0) ->
+			if
+			:: (nodes[nid].reqNodes[i] < 0) ->
 				nodes[nid].reqNodes[i] = src;
 				nodes[nid].reqTimestamp[i] = ts;
+			fi
 		:: else -> break;
 		od;
 	}
