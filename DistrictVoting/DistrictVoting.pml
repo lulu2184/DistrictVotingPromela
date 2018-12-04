@@ -86,6 +86,7 @@ inline tryGrant(nid) {
 		if
 		:: (nodes[nid].earliestReqIndex >= 0) ->
 			grant(nid, nodes[nid].earliestReqIndex);
+		:: else -> skip;
 		fi;
 	}
 }
@@ -96,6 +97,7 @@ inline processGrant(nid, src) {
 		if
 		:: nodes[nid].voteCount == neighborNum ->
 			nodes[nid].inCS = 1;
+			nodes[nid].voteCount = 0;
 			updateNumInCS();
 		:: else -> skip;
 		fi;
