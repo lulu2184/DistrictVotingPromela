@@ -38,11 +38,9 @@ inline getEarliestRequest(nid) {
 	int selected = -1;
 	do
 	:: (i < N) ->
-		if
-		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
+		(nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
 			minTs = nodes[nid].reqTimestamp[i];
 			selected = i;
-		fi
 	:: else -> break;
 	od;
 	nodes[nid].earliestReqIndex = selected;
@@ -53,19 +51,18 @@ inline insertRequest(nid, src, ts) {
 		int i = 0;
 		do
 		:: (i < N) ->
-			if
-			:: (nodes[nid].reqNodes[i] < 0) ->
+			(nodes[nid].reqNodes[i] < 0) ->
 				nodes[nid].reqNodes[i] = src;
 				nodes[nid].reqTimestamp[i] = ts;
-			fi
 		:: else -> break;
 		od;
 	}
 }
 
-inline grant(nid, src) {
-	nodes[nid].vote = src;
-	c[src]!GRANT(nid, 0);
+inline grant(nid, ind) {
+	nodes[nid].vote = nodes[nid].reqNodes[ind];
+	c[nodes[nid].reqNodes[ind]]!GRANT(nid, 0);
+	nodes[nid].reqNodes[ind] = -1;
 }
 
 inline processRequest(nid, src, ts) {
