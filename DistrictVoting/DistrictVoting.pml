@@ -100,7 +100,7 @@ proctype Processor(int nid) {
 		if
 
 		:: type == REQUEST -> processRequest(nid, source, ts);
-		:: type == GRANT -> processGrant(nid, , source);
+		:: type == GRANT -> processGrant(nid, source);
 		:: type == RELEASE -> processRelease(nid, source);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
