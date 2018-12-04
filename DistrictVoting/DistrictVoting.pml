@@ -19,7 +19,7 @@ typedef Node {
 	int reqCount;
 };
 
-chan c[N] = [neighborNum] of {mtype, int, int};
+chan c[N] = [neighborNum * 10] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
@@ -42,7 +42,7 @@ inline getEarliestRequest(nid) {
 	do
 	:: (i < N) ->
 		if
-		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
+		:: ((nodes[nid].reqNodes[i] >= 0) && (nodes[nid].reqTimestamp[i] < minTs)) ->
 			minTs = nodes[nid].reqTimestamp[i];
 			selected = i;
 		:: else -> skip;
@@ -63,6 +63,7 @@ inline insertRequest(nid, src, ts) {
 				nodes[nid].reqNodes[i] = src;
 				nodes[nid].reqTimestamp[i] = ts;
 				nodes[nid].reqCount = nodes[nid].reqCount + 1;
+				break;
 			:: else -> skip;
 			fi
 			i++;
@@ -97,7 +98,7 @@ inline processGrant(nid, src) {
 	d_step {
 		nodes[nid].voteCount++;
 		if
-		:: nodes[nid].voteCount == neighborNum ->
+		:: (nodes[nid].voteCount == neighborNum) ->
 			nodes[nid].inCS = 1;
 			nodes[nid].voteCount = 0;
 			updateNumInCS();
@@ -116,7 +117,7 @@ inline requestCS(nid) {
 		int i = 0;
 		currentTime++;
 		do
-		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
+		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
 		:: else -> break;
 		od;
 		nodes[nid].csTimes++;
@@ -127,7 +128,7 @@ inline exitCS(nid) {
 	d_step {
 		int i = 0;
 		do
-		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid); i++;
+		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid, 0); i++;
 		:: else -> break;
 		od;
 		nodes[nid].inCS = 0;
