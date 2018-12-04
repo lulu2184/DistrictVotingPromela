@@ -102,8 +102,9 @@ inline processRelease(nid, source) {
 inline requestCS(nid) {
 	d_step {
 		int i = 0;
+		currentTime++;
 		do
-		::(i<neighborNum) -> currentTime++;c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
+		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
 		:: else -> nodes[nid].csTimes++; break;
 		od;
 	}
