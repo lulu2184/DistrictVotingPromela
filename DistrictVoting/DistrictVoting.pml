@@ -127,7 +127,7 @@ inline exitCS(nid) {
 	d_step {
 		int i = 0;
 		do
-		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid， 0); i++;
+		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid); i++;
 		:: else -> break;
 		od;
 		nodes[nid].inCS = 0;
