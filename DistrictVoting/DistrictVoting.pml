@@ -33,7 +33,11 @@ inline processRelease(nid) {
 }
 
 inline requestCS(nid) {
-
+	int i = 0;
+	do
+	::(i<len(nodes[nid])) -> d_step { c[neighb[i]]!REQUEST; i++; }
+	:: (i>=len(nodes[nid])) -> d_step { csTimes++; break; }
+	od;
 }
 
 inline exitCS(nid) {
