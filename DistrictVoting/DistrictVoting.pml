@@ -26,7 +26,7 @@ int numInCS = 0;
 bit start = 0;
 int totalCSTimes = 0;
 
-/* ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) } */
+ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 
 /* For loop to sum inCS field for all nodes. */
 inline updateNumInCS() {
@@ -52,25 +52,21 @@ inline getEarliestRequest(nid) {
 	int i = 0;
 	int minTs = maxTimestamp;
 	int selected = -1;
-	do
-	:: (i < N) ->
+	for (i : 0 .. (N - 1)) {
 		if
 		:: ((nodes[nid].reqNodes[i] >= 0) && (nodes[nid].reqTimestamp[i] < minTs)) ->
 			minTs = nodes[nid].reqTimestamp[i];
 			selected = i;
 		:: else -> skip;
 		fi
-		i++;
-	:: else -> break;
-	od;
+	}
 	nodes[nid].earliestReqIndex = selected;
 }
 
 inline insertRequest(nid, src, ts) {
 	atomic {
 		int i = 0;
-		do
-		:: (i < N) ->
+		for (i : 0 .. (N - 1)) {
 			if
 			:: (nodes[nid].reqNodes[i] < 0) ->
 				nodes[nid].reqNodes[i] = src;
@@ -79,9 +75,7 @@ inline insertRequest(nid, src, ts) {
 				break;
 			:: else -> skip;
 			fi
-			i++;
-		:: else -> break;
-		od;
+		}
 	}
 }
 
@@ -128,10 +122,9 @@ inline requestCS(nid) {
 	atomic {
 		int i = 0;
 		currentTime++;
-		do
-		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
-		:: else -> break;
-		od;
+		for (i : 0 .. (neighborNum - 1)) {
+			c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime);
+		}
 		nodes[nid].csTimes++;
 		updateTotalCSTimes();
 	}
@@ -140,10 +133,9 @@ inline requestCS(nid) {
 inline exitCS(nid) {
 	atomic {
 		int i = 0;
-		do
-		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid, 0); i++;
-		:: else -> break;
-		od;
+		for (i : 0 .. (neighborNum - 1)) {
+			c[nodes[nid].neighb[i]]!RELEASE(nid, 0);
+		}
 		nodes[nid].inCS = 0;
 		nodes[nid].voteCount = 0; 
 	}
