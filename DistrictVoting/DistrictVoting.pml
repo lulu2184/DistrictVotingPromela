@@ -52,21 +52,22 @@ inline getEarliestRequest(nid) {
 }
 
 inline insertRequest(nid, src, ts) {
-	d_step {
 		int i = 0;
 		do
 		:: (i < N) ->
 			if
 			:: (nodes[nid].reqNodes[i] < 0) ->
+				d_step{
 				nodes[nid].reqNodes[i] = src;
 				nodes[nid].reqTimestamp[i] = ts;
 				nodes[nid].reqCount = nodes[nid].reqCount + 1;
+				}
+				
 			:: else -> skip;
 			fi
 			i++;
 		:: else -> break;
 		od;
-	}
 }
 
 inline grant(nid, ind) {
@@ -81,18 +82,15 @@ inline processRequest(nid, src, ts) {
 }
 
 inline tryGrant(nid) {
-	d_step {
 		getEarliestRequest(nid);
 		if
 		:: (nodes[nid].earliestReqIndex >= 0) ->
 			grant(nid, nodes[nid].earliestReqIndex);
 		:: else -> skip;
 		fi;
-	}
 }
 
 inline processGrant(nid, src) {
-	d_step {
 		nodes[nid].voteCount++;
 		if
 		:: nodes[nid].voteCount == neighborNum ->
@@ -101,7 +99,6 @@ inline processGrant(nid, src) {
 			updateNumInCS();
 		:: else -> skip;
 		fi;
-	}
 }
 
 inline processRelease(nid, source) {
@@ -110,24 +107,20 @@ inline processRelease(nid, source) {
 }
 
 inline requestCS(nid) {
-	d_step {
 		int i = 0;
 		currentTime++;
 		do
 		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
 		:: else -> nodes[nid].csTimes++; break;
 		od;
-	}
 }
 
 inline exitCS(nid) {
-	d_step {
 		int i = 0;
 		do
 		::(i<neighborNum) -> c[nodes[nid].neighb[i]]!RELEASE(nid); i++;
 		:: else -> nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break;
 		od;
-	}
 }
 
 proctype Processor(int nid) {
@@ -135,15 +128,23 @@ proctype Processor(int nid) {
 	int source;
 	int ts;
 	do
-	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
-		if
-		:: type == REQUEST -> processRequest(nid, source, ts);
-		:: type == GRANT -> processGrant(nid, source);
-		:: type == RELEASE -> processRelease(nid, source);
-		fi
-	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
-	:: (nodes[nid].inCS == 1) -> exitCS(nid);
-	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
+	::	atomic {
+			(len(c[nid]) > 0) -> c[nid]?type(source, ts);
+			if
+			:: type == REQUEST -> processRequest(nid, source, ts);
+			:: type == GRANT -> processGrant(nid, source);
+			:: type == RELEASE -> processRelease(nid, source);
+			fi
+		}
+	::	atomic {
+			(nodes[nid].csTimes < reqLimit) -> requestCS(nid);
+		}
+	::	atomic {
+			(nodes[nid].inCS == 1) -> exitCS(nid);
+		}
+	::	atomic {
+			(nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
+		}
 	od;
 }
 
