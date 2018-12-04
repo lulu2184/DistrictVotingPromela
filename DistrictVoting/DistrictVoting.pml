@@ -5,9 +5,17 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define N (n * m)
 #define reqLimit 1
 
+typedef Node {
+	int csTimes; /* How many times has it requested the critical section. */
+	bit inCS;    /* If it's in CS - 1, otherwise 0 */
+	int reqNodes[N];  /* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	int reqTimestamp[N]; /* Timestamp for requests in the queue (reqNodes) */
+	int voted;           /* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	int voteCount;       /* The number of votes it has got for its requests. */
+}
+
 chan c[N] = [m + n - 2] of {mtype, int, int};
-int csTimes[N];
-bit inCS[N];
+Node nodes[N];
 
 inline processRequest(nid) {
 
@@ -40,8 +48,8 @@ proctype Processor(int nid) {
 		:: type == GRANT -> processGrant(nid);
 		:: type == RELEASE -> processRelease(nid);
 		fi
-	:: (csTimes[nid] < reqLimit) -> requestCS(nid);
-	:: (inCS[nid] == 1) -> exitCS(nid);
+	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
+	:: (nodes[nid].inCS == 1) -> exitCS(nid);
 	od;
 }
 
