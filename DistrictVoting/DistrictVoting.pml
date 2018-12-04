@@ -5,6 +5,7 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define N (n * m)
 #define neighborNum (m + n - 2)
 #define reqLimit 1
+#define maxTimestamp 10000
 
 typedef Node {
 	int csTimes;			/* How many times has it requested the critical section. */
@@ -14,14 +15,33 @@ typedef Node {
 	int voted;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	int voteCount;			/* The number of votes it has got for its requests. */
 	int neighb[neighborNum];/* Neighbors in the same district */
+	int selectedReq;
 };
 
 chan c[N] = [neighborNum] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 
-inline processRequest(nid) {
+inline getEarliestRequest(nid) {
+	int i = 0;
+	int minTs = maxTimestamp;
+	int selected = -1;
+	do
+	:: (i < N) -> 
+		if
+		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
+			minTs = nodes[nid].reqTimestamp[i];
+			selected = i;
+		fi
+	:: else -> break;
+	od;
+	nodes[nid].selectedReq = selected;
+}
 
+inline processRequest(nid, src, ts) {
+	d_step {
+		getEarliestRequest(nid);
+	}
 }
 
 inline processGrant(nid) {
