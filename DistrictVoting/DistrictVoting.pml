@@ -19,7 +19,7 @@ typedef Node {
 	int reqCount;
 };
 
-chan c[N] = [neighborNum * 10] of {mtype, int, int};
+chan c[N] = [neighborNum] of {mtype, int, int};
 Node nodes[N];
 int currentTime = 0;
 int numInCS = 0;
@@ -109,19 +109,16 @@ inline processGrant(nid, src) {
 
 inline processRelease(nid, source) {
 	nodes[nid].vote = -1;
-
 }
 
 inline requestCS(nid) {
-	d_step {
 		int i = 0;
 		currentTime++;
 		do
 		:: (i<neighborNum) -> c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime); i++;
 		:: else -> break;
 		od;
-		nodes[nid].csTimes++;
-	}
+		skip;
 }
 
 inline exitCS(nid) {
@@ -144,34 +141,35 @@ proctype Processor(int nid) {
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
 		:: type == REQUEST -> processRequest(nid, source, ts);
+		:: else -> skip;
 		:: type == GRANT -> processGrant(nid, source);
-		:: type == RELEASE -> processRelease(nid, source);
+		:: type == RELEASE -> end: nodes[nid].vote = -1;
 		fi
-	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
+	:: (nodes[nid].csTimes < reqLimit) -> d_step{ nodes[nid].csTimes++;requestCS(nid); }
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
-	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
+	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid); 
 	od;
 }
 
 inline setup() {
 	/* init nodes */
-	int nid = 0;
+	int i = 0;
 	do
-	::	(nid < N) ->
-		nodes[nid].csTimes = 0;
-		nodes[nid].inCS = 0;
+	::	(i < N) ->
+		nodes[i].csTimes = 0;
+		nodes[i].inCS = 0;
 
-		int i = 0;
+		int j = 0;
 		do
-		::	(i < N) ->
-			nodes[nid].reqNodes[i] = -1;
-			i++;
+		::	(j < N) ->
+			nodes[i].reqNodes[j] = -1;
+			j++;
 		::	else -> break;
 		od;
 
-		nodes[nid].vote = -1;
-		nodes[nid].voteCount = 0;
-		nid++;
+		nodes[i].vote = -1;
+		nodes[i].voteCount = 0;
+		i++;
 	::	else -> break;
 	od;
 
@@ -191,7 +189,7 @@ inline setup() {
 }
 
 init {
-	d_step {
+	d_step{
 		setup();
 	}
 
