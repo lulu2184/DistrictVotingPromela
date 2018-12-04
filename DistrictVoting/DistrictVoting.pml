@@ -43,6 +43,7 @@ inline getEarliestRequest(nid) {
 		:: (nodes[nid].reqNodes[i] >= 0 && nodes[nid].reqTimestamp[i] < minTs) ->
 			minTs = nodes[nid].reqTimestamp[i];
 			selected = i;
+		:: else -> skip;
 		fi
 		i++;
 	:: else -> break;
