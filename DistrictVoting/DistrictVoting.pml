@@ -101,7 +101,7 @@ inline processRelease(nid, source) {
 inline requestCS(nid) {
 	int i = 0;
 	do
-	::(i<len(nodes[nid])) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
+	::(i<neighborNum)) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
 	:: else -> d_step { nodes[nid].csTimes++; break; }
 	od;
 }
