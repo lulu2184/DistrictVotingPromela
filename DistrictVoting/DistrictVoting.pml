@@ -16,6 +16,7 @@ typedef Node {
 
 chan c[N] = [m + n - 2] of {mtype, int, int};
 Node nodes[N];
+int currentTime = 0;
 
 inline processRequest(nid) {
 
