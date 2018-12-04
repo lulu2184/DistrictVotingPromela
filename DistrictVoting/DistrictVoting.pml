@@ -104,7 +104,44 @@ proctype Processor(int nid) {
 	od;
 }
 
+inline setup() {
+	d_step {
+		/* init nodes */
+		int nid = 0;
+		do
+		::	(nid < N) -> 
+			nodes[nid].csTime = 0;
+			nodes[nid].inCS = 0;
+			
+			int i = 0;
+			do
+			::	(i < N) ->
+				nodes[nid].reqNodes[i] = -1;
+				i++;
+			::	else -> break;
+			od;
+			
+			nodes[nid].vote = -1;
+			nodes[nid].voteCount = 0;
+			nid++;
+		::	else -> break;
+		od;
+	
+		/* init node neighbors */
+		nodes[0].neighb[0] = 1;
+		nodes[0].neighb[1] = 2;
+		nodes[1].neighb[0] = 0;
+		nodes[1].neighb[1] = 3;
+		nodes[2].neighb[0] = 0;
+		nodes[2].neighb[1] = 3;
+		nodes[3].neighb[0] = 1;
+		nodes[3].neighb[1] = 2;
+	}
+}
+
 init {
+	setup();
+
 	int i = 0;
 	do
 	:: (i < N) -> run Processor(i); i++;
