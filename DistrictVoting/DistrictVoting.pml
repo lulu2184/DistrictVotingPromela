@@ -3,7 +3,7 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define n 2
 #define m 2
 #define N (n * m)
-#define neighborNum (m + n - 2)
+#define neighborNum (m + n - 1)
 #define reqLimit 1
 #define maxTimestamp 10000
 
@@ -49,16 +49,18 @@ inline getEarliestRequest(nid) {
 }
 
 inline insertRequest(nid, src, ts) {
-	int i = 0;
-	do
-	:: (i < N) ->
-		if
-		:: (nodes[nid].reqNodes[i] < 0) ->
-			nodes[nid].reqNodes[i] = src;
-			nodes[nid].reqTimestamp[i] = ts;
-		fi
-	:: else -> break;
-	od;
+	d_step {
+		int i = 0;
+		do
+		:: (i < N) ->
+			if
+			:: (nodes[nid].reqNodes[i] < 0) ->
+				nodes[nid].reqNodes[i] = src;
+				nodes[nid].reqTimestamp[i] = ts;
+			fi
+		:: else -> break;
+		od;
+	}
 }
 
 inline grant(nid, src) {
@@ -67,9 +69,7 @@ inline grant(nid, src) {
 }
 
 inline processRequest(nid, src, ts) {
-	d_step {
-		insertRequest(nid, src, ts);
-	}
+	insertRequest(nid, src, ts);
 }
 
 inline tryGrant(nid) {
@@ -77,7 +77,7 @@ inline tryGrant(nid) {
 		getEarliestRequest(nid);
 		if
 		:: (nodes[nid].earliestReqIndex >= 0) ->
-			grant(nid, src);
+			grant(nid, nodes[nid].earliestReqIndex);
 		fi;
 	}
 }
@@ -101,16 +101,16 @@ inline processRelease(nid, source) {
 inline requestCS(nid) {
 	int i = 0;
 	do
-	::(i<neighborNum)) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
-	:: else -> d_step { nodes[nid].csTimes++; break; }
+	::(i<neighborNum) -> d_step { c[nodes[nid].neighb[i]]!REQUEST; i++; }
+	:: else -> nodes[nid].csTimes++; break;
 	od;
 }
 
 inline exitCS(nid) {
 	int i = 0;
 	do
-	::(i<len(nodes[nid])) -> d_step { c[nodes[nid].neighb[i]]!RELEASE; i++; }
-	:: else -> d_step { nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break; }
+	::(i<neighborNum) -> d_step { c[nodes[nid].neighb[i]]!RELEASE; i++; }
+	:: else -> nodes[nid].inCS = 0; nodes[nid].voteCount = 0; break;
 	od;
 }
 
@@ -137,7 +137,7 @@ inline setup() {
 	int nid = 0;
 	do
 	::	(nid < N) ->
-		nodes[nid].csTime = 0;
+		nodes[nid].csTimes = 0;
 		nodes[nid].inCS = 0;
 
 		int i = 0;
@@ -155,14 +155,18 @@ inline setup() {
 	od;
 
 	/* init node neighbors */
-	nodes[0].neighb[0] = 1;
-	nodes[0].neighb[1] = 2;
+	nodes[0].neighb[0] = 0;
+	nodes[0].neighb[1] = 1;
+	nodes[0].neighb[2] = 2;
 	nodes[1].neighb[0] = 0;
-	nodes[1].neighb[1] = 3;
+	nodes[1].neighb[1] = 1;
+	nodes[1].neighb[2] = 3;
 	nodes[2].neighb[0] = 0;
-	nodes[2].neighb[1] = 3;
+	nodes[2].neighb[1] = 2;
+	nodes[2].neighb[2] = 3;
 	nodes[3].neighb[0] = 1;
 	nodes[3].neighb[1] = 2;
+	nodes[3].neighb[2] = 3;
 }
 
 init {
