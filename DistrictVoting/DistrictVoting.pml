@@ -34,7 +34,7 @@ byte votesInChannel[N];
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 ltl alwaysAtMostOneVote { [](votes <= N) }
-ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N) }
+ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N*reqLimit) }
 
 
 /* For loop to sum inCS field for all nodes. */
@@ -47,25 +47,29 @@ inline updateNumInCS() {
 	    }
 	}
 }
-
+/* For loop to sum all votes */
 inline sum_votes() {
 	atomic {
 		votes = 0;
-		byte t;
+		byte i;
 		byte j;
-    	for (t in nodes) {
-    		if
-    		:: (nodes[t].vote == -1) -> votes = votes+1;
+    	for (i in nodes) {
+    		if /* count vote on hand */
+    		:: (nodes[i].vote == -1) -> votes = votes+1;
     		fi;
-    		for(j in nodes[t].reqNodes){
+    		/* count vote to others */
+    		for(j in nodes[i].recVote){
     			if
-    			:: (t == nodes[nodes[t].reqNodes[j]].vote) -> votes = votes+1;
+    			:: (nodes[i].recVote[j] == 1) -> votes = votes+1;
     			fi;
     		}
     	}
+    	/* count vote in channels */
+    	votes = votes + len(votesInChan[i]);
     }
 }
 
+/* For loop to update the times of entering critical section */
 inline updateTotalCSTimes() {
 	atomic {
 		totalCSTimes = 0;
@@ -75,6 +79,7 @@ inline updateTotalCSTimes() {
 	}
 }
 
+/* Find out the earliest request of given node */
 inline getEarliestRequest(nid) {
 	byte i = 0;
 	byte minTs = maxTimestamp;
@@ -90,6 +95,7 @@ inline getEarliestRequest(nid) {
 	nodes[nid].earliestReqIndex = selected;
 }
 
+/*when receive REQUEST, process the corresponging request recording fields*/
 inline insertRequest(nid, src, ts) {
 	atomic {
 		byte i = 0;
@@ -130,6 +136,7 @@ inline processRequest(nid, src, ts) {
 	insertRequest(nid, src, ts);
 }
 
+/* try to grant others */
 inline tryGrant(nid) {
 	atomic {
 		getEarliestRequest(nid);
