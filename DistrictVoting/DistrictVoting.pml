@@ -33,7 +33,7 @@ byte votes = 0;
 byte votesInChannel[N];
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
-ltl alwaysAtMostOneVote { [](votes <= N) }
+ltl alwaysAtMostOneVote { [](start -> (votes == N)) }
 ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N*reqLimit) }
 
 
@@ -47,25 +47,36 @@ inline updateNumInCS() {
 	    }
 	}
 }
+
 /* For loop to sum all votes */
 inline sum_votes() {
 	atomic {
 		votes = 0;
-		byte i;
+		byte t;
 		byte j;
-    	for (i in nodes) {
-    		if /* count vote on hand */
-    		:: (nodes[i].vote == -1) -> votes = votes+1;
+		byte c1, c2, c3;
+    	for (t : 0 .. (N-1)) {
+    		/* Case 1: vote on t's hand. */
+    		if
+    		:: (nodes[t].vote < 0) -> c1 = 1;
+    		:: else -> c1 = 0;
     		fi;
-    		/* count vote to others */
-    		for(j in nodes[i].recVote){
-    			if
-    			:: (nodes[i].recVote[j] == 1) -> votes = votes+1;
-    			fi;
+    		
+    		/* Case 2: vote on other's hand. */
+    		c2 = 0;
+    		for (j : 0 .. (N - 1)) {
+    			c2 = c2 + nodes[j].recVote[t];
     		}
+    		
+    		/* Case 3: t's vote is in channel */
+    		c3 = votesInChannel[t];
+    		
+    		
+    		if
+    		:: (c1 + c2 + c3 == 1) -> votes = votes + 1;
+    		:: else -> skip; 
+    		fi; 
     	}
-    	/* count vote in channels */
-    	votes = votes + len(votesInChan[i]);
     }
 }
 
@@ -290,6 +301,8 @@ init {
 	atomic {
 		setup();
 	}
+	
+	sum_votes();
 
 	atomic {
 		byte i = 0;
