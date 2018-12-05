@@ -45,7 +45,7 @@ inline updateNumInCS() {
 	    }
 	}
 }
-
+/* For loop to sum all votes */
 inline sum_votes() {
 	d_step {
 		votes = 0;
@@ -67,6 +67,7 @@ inline sum_votes() {
     }
 }
 
+/* For loop to update the times of entering critical section */
 inline updateTotalCSTimes() {
 	atomic {
 		totalCSTimes = 0;
@@ -76,6 +77,7 @@ inline updateTotalCSTimes() {
 	}
 }
 
+/* Find out the earliest request of given node */
 inline getEarliestRequest(nid) {
 	byte i = 0;
 	byte minTs = maxTimestamp;
@@ -91,6 +93,7 @@ inline getEarliestRequest(nid) {
 	nodes[nid].earliestReqIndex = selected;
 }
 
+/*when receive REQUEST, process the corresponging request recording fields*/
 inline insertRequest(nid, src, ts) {
 	atomic {
 		byte i = 0;
@@ -129,6 +132,7 @@ inline processRequest(nid, src, ts) {
 	insertRequest(nid, src, ts);
 }
 
+/* try to grant others */
 inline tryGrant(nid) {
 	atomic {
 		getEarliestRequest(nid);
