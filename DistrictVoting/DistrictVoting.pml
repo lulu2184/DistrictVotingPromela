@@ -244,7 +244,7 @@ proctype Processor(byte nid) {
 		if
 		:: type == REQUEST -> processRequest(nid, source, ts);
 		:: type == GRANT -> processGrant(nid, source);
-		:: type == RELEASE -> nodes[nid].vote = -1;
+		:: type == RELEASE -> processRelease(nid, source);
 		:: type == INQUIRE -> processInquire(nid, source);
 		:: type == RELINQUISH -> processRelinquish(nid, source, ts);
 		fi
