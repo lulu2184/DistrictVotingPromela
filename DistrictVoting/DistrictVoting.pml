@@ -4,39 +4,52 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define m 2
 #define N (n * m)
 #define neighborNum (m + n - 1)
-#define reqLimit 1
 #define maxTimestamp 10000
 #define INVALID 255
 
+/* Limit of request times for each node. */
+#define reqLimit 1
+
+/* Data structure for nodes.  */
 typedef Node {
-	bit csTimes;			/* How many times has it requested the critical section. */
-	bit inCS;				/* If it's in CS 1, otherwise 0 */
-	byte reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
-	byte reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
-	byte vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	bit csTimes;				/* How many times has it requested the critical section. */
+	bit inCS;					/* If it's in CS 1, otherwise 0 */
+	byte reqNodes[N];			/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	byte reqTimestamp[N];		/* Timestamp for requests in the queue (reqNodes) */
+	byte vote;					/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	byte voteTS;				/* The timestamp of the request which it gave the vote to. */
-	byte voteCount;			/* The number of votes it has got for its requests. */
-	byte neighb[neighborNum];/* Neighbors in the same district */
-	byte earliestReqIndex;
-	byte reqCount;
-	byte reqTime;
-	bit inquired;
-	byte recVote[N];
+	byte voteCount;				/* The number of votes it has got for its requests. */
+	byte neighb[neighborNum];	/* Neighbors in the same district */
+	byte earliestReqIndex;		/* Index of the earlies request in the reqNodes list. Need to call getEarliestRequest before use. */
+	byte reqCount;				/* Number of incoming requests. */
+	byte reqTime;				/* The time when this node trying to request CS. */
+	bit inquired;				/* Whether it has been inquired for the current voted candidate. */
+	byte recVote[N];			/* Indicate voters for this node. recVote[i] = 1 means i voted for this node. */
 };
 
-chan c[N] = [neighborNum * 3] of {mtype, byte, byte};
-Node nodes[N];
-byte currentTime = 0;
-byte numInCS = 0;
-bit start = 0;
-byte totalCSTimes = 0;
-byte votes = 0;
-byte votesInChannel[N];
-byte c1;
+chan c[N] = [neighborNum * 3] of {mtype, byte, byte};  /* N channels. One for each node. */
+Node nodes[N];					/* Node info. */
+byte currentTime = 0; 			/* Global timestamp. */
+byte numInCS = 0;				/* Number of nodes in critical section. Updated by updateNumInCS(). */
+bit start = 0;					/* A 0/1 flag to indicate whether the system begins. */
+byte totalCSTimes = 0;			/* Total times for all nodes requested for critical sections. */
+byte numOneVoteSatisfied = 0;	/* Number of nodes satisfy exactly one vote criteria. */
+byte votesInChannel[N];			/* votesInChannel[i]: Number of votes from node i in channel. */
 
+/* Only one node can enter critical section at any time. */
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
-ltl alwaysAtMostOneVote { [](start -> (votes == N)) }
+
+/* Anytime, all the nodes need to satisfy exactly one vote criteria.
+   Exactly one vote criteria: every node has exactly one vote, including:
+   		1. vote on its hand
+   		2. vote given by it which is transimitting in channels
+   		3. vote which is given to others */
+ltl alwaysExactlyOneVoteForEachNode { [](start -> (numOneVoteSatisfied == N)) }
+
+/* Always eventually all nodes access critical section for reqLimit times. */
 ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N*reqLimit) }
+
+/* Nodes can access critical section(CS), and it finally exits from the CS. */
 ltl EventuallyExitCriticalSectionAfterEnter { []((numInCS == 1) -> <>(numInCS == 0)) }
 
 
@@ -54,9 +67,10 @@ inline updateNumInCS() {
 /* For loop to sum all votes */
 inline sum_votes() {
 	atomic {
-		votes = 0;
+		numOneVoteSatisfied = 0;
 		byte t;
 		byte j;
+		byte c1;
     	for (t : 0 .. (N-1)) {
     		/* Case 1: vote on t's hand. */
     		if
@@ -72,9 +86,9 @@ inline sum_votes() {
     		/* Case 3: t's vote is in channel */
     		c1 = c1 + votesInChannel[t];
 
-
+			/* Only when it satisfies exactly one case, it satisfies one vote criteria. */
     		if
-    		:: (c1 == 1) -> votes = votes + 1;
+    		:: (c1 == 1) -> numOneVoteSatisfied = numOneVoteSatisfied + 1;
     		:: else -> skip;
     		fi;
     	}
@@ -107,7 +121,7 @@ inline getEarliestRequest(nid) {
 	nodes[nid].earliestReqIndex = selected;
 }
 
-/*when receive REQUEST, process the corresponging request recording fields*/
+/* Insert (src, ts) to reqNodes for node nid. */
 inline insertRequest(nid, src, ts) {
 	atomic {
 		byte i = 0;
@@ -124,6 +138,7 @@ inline insertRequest(nid, src, ts) {
 	}
 }
 
+/* Grant the ind-th node in nid's reqNodes. */
 inline grant(nid, ind) {
 	nodes[nid].vote = nodes[nid].reqNodes[ind];
 	c[nodes[nid].reqNodes[ind]]!GRANT(nid, 0);
@@ -134,6 +149,7 @@ inline grant(nid, ind) {
 	sum_votes();
 }
 
+/* Send INQUIRE request to who got its vote to get the vote back. */
 inline inquire(nid) {
 	if
 		:: (nodes[nid].inquired == 0) ->
@@ -144,6 +160,7 @@ inline inquire(nid) {
 	fi;
 }
 
+/* Process REQUEST after retrieving it from channel. */
 inline processRequest(nid, src, ts) {
 	insertRequest(nid, src, ts);
 }
@@ -162,6 +179,7 @@ inline tryGrant(nid) {
 	}
 }
 
+/* Process GRANT after retrieving it from channel. */
 inline processGrant(nid, src) {
 	atomic {
 		votesInChannel[src]--;
@@ -178,6 +196,7 @@ inline processGrant(nid, src) {
 	}
 }
 
+/* Process INQUIRE after retrieving it from channel. */
 inline processInquire(nid, src) {
 	atomic {
 		if
@@ -191,6 +210,7 @@ inline processInquire(nid, src) {
 	}
 }
 
+/* Process RELINQUISH after retrieving it from channel. */
 inline processRelinquish(nid, src, ts) {
 	atomic {
 		votesInChannel[nid]--;
@@ -200,6 +220,7 @@ inline processRelinquish(nid, src, ts) {
 	}
 }
 
+/* Process RELEASE after retrieving it from channel.  */
 inline processRelease(nid, source) {
 	atomic {
 		nodes[nid].vote = INVALID;
@@ -208,6 +229,7 @@ inline processRelease(nid, source) {
 	}
 }
 
+/* Request for critical section. */
 inline requestCS(nid) {
 	atomic {
 		int i = 0;
@@ -221,6 +243,7 @@ inline requestCS(nid) {
 	}
 }
 
+/* Exit the critical section. */
 inline exitCS(nid) {
 	atomic {
 		int i = 0;
@@ -235,6 +258,7 @@ inline exitCS(nid) {
 	}
 }
 
+/* Proctype for nodes. */
 proctype Processor(byte nid) {
 	start == 1;
 	mtype type;
@@ -253,7 +277,7 @@ proctype Processor(byte nid) {
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
 	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
 	:: (totalCSTimes == N && nodes[nid].reqCount == 0 && len(c[nid]) == 0) ->
-		end:
+		end: /* end state. */
 			do
 			:: (nodes[nid].reqCount == 0) -> skip;
 			od;
@@ -311,6 +335,6 @@ init {
 		:: (i < N) -> run Processor(i); i++;
 		:: else -> break;
 		od;
-		start = 1;
+		start = 1; /* System starts. */
 	}
 }
