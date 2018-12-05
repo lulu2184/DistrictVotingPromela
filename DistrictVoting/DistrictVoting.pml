@@ -165,11 +165,11 @@ inline processGrant(nid, src) {
 	atomic {
 		votesInChannel[src]--;
 		nodes[nid].voteCount++;
+		nodes[nid].recVote[src] = 1;
 		if
 		:: (nodes[nid].voteCount == neighborNum) ->
 			nodes[nid].inCS = 1;
 			nodes[nid].voteCount = 0;
-			nodes[nid].recVote[src] = 1;
 			updateNumInCS();
 		:: else -> skip;
 		fi;
