@@ -25,8 +25,12 @@ int currentTime = 0;
 int numInCS = 0;
 bit start = 0;
 int totalCSTimes = 0;
+int votes = 0;
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
+ltl alwaysAtMostOneVote { [](votes <= N) }
+ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N) }
+
 
 /* For loop to sum inCS field for all nodes. */
 inline updateNumInCS() {
@@ -37,6 +41,24 @@ inline updateNumInCS() {
 	    	numInCS = numInCS + nodes[i].inCS;
 	    }
 	}
+}
+
+inline sum_votes() {
+	d_step {
+		votes = 0;
+		int i;
+		int j;
+    	for (i in nodes) {
+    		if
+    		:: (nodes[i].vote == -1) -> votes = votes+1;
+    		fi;
+    		for(j in reqNodes){
+    			if
+    			:: (i == nodes[i].reqNodes[j].vote) -> votes = votes+1;
+    			fi;
+    		}
+    	}
+    }
 }
 
 inline updateTotalCSTimes() {
