@@ -57,7 +57,7 @@ inline sum_votes() {
     		fi;
     		for(j in reqNodes){
     			if
-    			:: (i == nodes[i].reqNodes[j].vote) -> votes = votes+1;
+    			:: (i == nodes[nodes[i].reqNodes[j]].vote) -> votes = votes+1;
     			fi;
     		}
     	}
@@ -110,6 +110,7 @@ inline grant(nid, ind) {
 	nodes[nid].reqNodes[ind] = -1;
 	nodes[nid].reqCount = nodes[nid].reqCount - 1;
 	nodes[nid].inquired = 0;
+	sum_votes();
 }
 
 inline inquire(nid) {
