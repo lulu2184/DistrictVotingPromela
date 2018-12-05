@@ -22,24 +22,46 @@ typedef Node {
 	bit inquired;
 };
 
-chan c[N] = [neighborNum * 3] of {mtype, int, int};
+chan c[N] = [neighborNum * 3] of {mtype, byte, byte};
 Node nodes[N];
 byte currentTime = 0;
 byte numInCS = 0;
 bit start = 0;
 byte totalCSTimes = 0;
+byte votes = 0;
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
+ltl alwaysAtMostOneVote { [](votes <= N) }
+ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N) }
+
 
 /* For loop to sum inCS field for all nodes. */
 inline updateNumInCS() {
 	atomic {
 		numInCS = 0;
-		int i;
+		byte i;
 	    for (i : 0 .. (N - 1)) {
 	    	numInCS = numInCS + nodes[i].inCS;
 	    }
 	}
+}
+
+inline sum_votes() {
+	d_step {
+		votes = 0;
+		byte i;
+		byte j;
+    	for (i in nodes) {
+    		if
+    		:: (nodes[i].vote == -1) -> votes = votes+1;
+    		fi;
+    		for(j in reqNodes){
+    			if
+    			:: (i == nodes[i].reqNodes[j].vote) -> votes = votes+1;
+    			fi;
+    		}
+    	}
+    }
 }
 
 inline updateTotalCSTimes() {
@@ -52,9 +74,9 @@ inline updateTotalCSTimes() {
 }
 
 inline getEarliestRequest(nid) {
-	int i = 0;
-	int minTs = maxTimestamp;
-	int selected = -1;
+	byte i = 0;
+	byte minTs = maxTimestamp;
+	byte selected = -1;
 	for (i : 0 .. (N - 1)) {
 		if
 		:: ((nodes[nid].reqNodes[i] >= 0) && (nodes[nid].reqTimestamp[i] < minTs)) ->
@@ -68,7 +90,7 @@ inline getEarliestRequest(nid) {
 
 inline insertRequest(nid, src, ts) {
 	atomic {
-		int i = 0;
+		byte i = 0;
 		for (i : 0 .. (N - 1)) {
 			if
 			:: (nodes[nid].reqNodes[i] < 0) ->
@@ -177,8 +199,8 @@ inline exitCS(nid) {
 proctype Processor(byte nid) {
 	start == 1;
 	mtype type;
-	int source;
-	int ts;
+	byte source;
+	byte ts;
 	do
 	:: (len(c[nid]) > 0) -> c[nid]?type(source, ts);
 		if
@@ -207,7 +229,7 @@ inline setup() {
 		nodes[i].csTimes = 0;
 		nodes[i].inCS = 0;
 
-		int j = 0;
+		byte j = 0;
 		do
 		::	(j < N) ->
 			nodes[i].reqNodes[j] = -1;
