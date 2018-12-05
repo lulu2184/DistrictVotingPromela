@@ -6,13 +6,14 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define neighborNum (m + n - 1)
 #define reqLimit 1
 #define maxTimestamp 10000
+#define INVALID 255
 
 typedef Node {
 	bit csTimes;			/* How many times has it requested the critical section. */
 	bit inCS;				/* If it's in CS 1, otherwise 0 */
-	short reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	byte reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
 	byte reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
-	short vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	byte vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	byte voteTS;				/* The timestamp of the request which it gave the vote to. */
 	byte voteCount;			/* The number of votes it has got for its requests. */
 	byte neighb[neighborNum];/* Neighbors in the same district */
@@ -31,10 +32,12 @@ bit start = 0;
 byte totalCSTimes = 0;
 byte votes = 0;
 byte votesInChannel[N];
+byte c1;
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 ltl alwaysAtMostOneVote { [](start -> (votes == N)) }
 ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N*reqLimit) }
+ltl EventuallyExitCriticalSectionAfterEnter { []((numInCS == 1) -> <>(numInCS == 0)) }
 
 
 /* For loop to sum inCS field for all nodes. */
@@ -54,28 +57,26 @@ inline sum_votes() {
 		votes = 0;
 		byte t;
 		byte j;
-		byte c1, c2, c3;
     	for (t : 0 .. (N-1)) {
     		/* Case 1: vote on t's hand. */
     		if
-    		:: (nodes[t].vote == -1) -> c1 = 1;
+    		:: (nodes[t].vote == INVALID) -> c1 = 1;
     		:: else -> c1 = 0;
     		fi;
-    		
+
     		/* Case 2: vote on other's hand. */
-    		c2 = 0;
     		for (j : 0 .. (N - 1)) {
-    			c2 = c2 + nodes[j].recVote[t];
+    			c1 = c1 + nodes[j].recVote[t];
     		}
-    		
+
     		/* Case 3: t's vote is in channel */
-    		c3 = votesInChannel[t];
-    		
-    		
+    		c1 = c1 + votesInChannel[t];
+
+
     		if
-    		:: (c1 + c2 + c3 == 1) -> votes = votes + 1;
-    		:: else -> skip; 
-    		fi; 
+    		:: (c1 == 1) -> votes = votes + 1;
+    		:: else -> skip;
+    		fi;
     	}
     }
 }
@@ -94,7 +95,7 @@ inline updateTotalCSTimes() {
 inline getEarliestRequest(nid) {
 	byte i = 0;
 	byte minTs = maxTimestamp;
-	byte selected = -1;
+	byte selected = INVALID;
 	for (i : 0 .. (N - 1)) {
 		if
 		:: ((nodes[nid].reqNodes[i] >= 0) && (nodes[nid].reqTimestamp[i] < minTs)) ->
@@ -127,7 +128,7 @@ inline grant(nid, ind) {
 	nodes[nid].vote = nodes[nid].reqNodes[ind];
 	c[nodes[nid].reqNodes[ind]]!GRANT(nid, 0);
 	votesInChannel[nid]++;
-	nodes[nid].reqNodes[ind] = -1;
+	nodes[nid].reqNodes[ind] = INVALID;
 	nodes[nid].reqCount = nodes[nid].reqCount - 1;
 	nodes[nid].inquired = 0;
 	sum_votes();
@@ -194,14 +195,14 @@ inline processRelinquish(nid, src, ts) {
 	atomic {
 		votesInChannel[nid]--;
 		insertRequest(nid, src, ts);
-		nodes[nid].vote = -1;
+		nodes[nid].vote = INVALID;
 		sum_votes();
 	}
 }
 
 inline processRelease(nid, source) {
 	atomic {
-		nodes[nid].vote = -1;
+		nodes[nid].vote = INVALID;
 		votesInChannel[nid]--;
 		sum_votes();
 	}
@@ -270,13 +271,13 @@ inline setup() {
 		byte j = 0;
 		do
 		::	(j < N) ->
-			nodes[i].reqNodes[j] = -1;
+			nodes[i].reqNodes[j] = INVALID;
 			nodes[i].recVote[j] = 0;
 			j++;
 		::	else -> break;
 		od;
 
-		nodes[i].vote = -1;
+		nodes[i].vote = INVALID;
 		nodes[i].voteCount = 0;
 		i++;
 	::	else -> break;
@@ -301,7 +302,7 @@ init {
 	atomic {
 		setup();
 	}
-	
+
 	sum_votes();
 
 	atomic {
