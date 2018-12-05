@@ -8,26 +8,26 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 #define maxTimestamp 10000
 
 typedef Node {
-	int csTimes;			/* How many times has it requested the critical section. */
+	bit csTimes;			/* How many times has it requested the critical section. */
 	bit inCS;				/* If it's in CS 1, otherwise 0 */
-	int reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
-	int reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
-	int vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
-	int voteTS;				/* The timestamp of the request which it gave the vote to. */
-	int voteCount;			/* The number of votes it has got for its requests. */
-	int neighb[neighborNum];/* Neighbors in the same district */
-	int earliestReqIndex;
-	int reqCount;
-	int reqTime;
+	byte reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	byte reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
+	byte vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	byte voteTS;				/* The timestamp of the request which it gave the vote to. */
+	byte voteCount;			/* The number of votes it has got for its requests. */
+	byte neighb[neighborNum];/* Neighbors in the same district */
+	byte earliestReqIndex;
+	byte reqCount;
+	byte reqTime;
 	bit inquired;
 };
 
 chan c[N] = [neighborNum * 3] of {mtype, int, int};
 Node nodes[N];
-int currentTime = 0;
-int numInCS = 0;
+byte currentTime = 0;
+byte numInCS = 0;
 bit start = 0;
-int totalCSTimes = 0;
+byte totalCSTimes = 0;
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 
@@ -174,7 +174,7 @@ inline exitCS(nid) {
 	}
 }
 
-proctype Processor(int nid) {
+proctype Processor(byte nid) {
 	start == 1;
 	mtype type;
 	int source;
@@ -192,13 +192,16 @@ proctype Processor(int nid) {
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
 	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
 	:: (totalCSTimes == N && nodes[nid].reqCount == 0 && len(c[nid]) == 0) ->
-		end: skip;
+		end:
+			do
+			:: (nodes[nid].reqCount == 0) -> skip;
+			od;
 	od;
 }
 
 inline setup() {
 	/* init nodes */
-	int i = 0;
+	byte i = 0;
 	do
 	::	(i < N) ->
 		nodes[i].csTimes = 0;
@@ -239,7 +242,7 @@ init {
 	}
 
 	atomic {
-		int i = 0;
+		byte i = 0;
 		do
 		:: (i < N) -> run Processor(i); i++;
 		:: else -> break;
