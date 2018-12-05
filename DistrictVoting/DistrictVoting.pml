@@ -10,9 +10,9 @@ mtype = { REQUEST, GRANT, INQUIRE, RELINQUISH, RELEASE }
 typedef Node {
 	bit csTimes;			/* How many times has it requested the critical section. */
 	bit inCS;				/* If it's in CS 1, otherwise 0 */
-	byte reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
+	short reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
 	byte reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
-	byte vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	short vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
 	byte voteTS;				/* The timestamp of the request which it gave the vote to. */
 	byte voteCount;			/* The number of votes it has got for its requests. */
 	byte neighb[neighborNum];/* Neighbors in the same district */
@@ -58,7 +58,7 @@ inline sum_votes() {
     	for (t : 0 .. (N-1)) {
     		/* Case 1: vote on t's hand. */
     		if
-    		:: (nodes[t].vote < 0) -> c1 = 1;
+    		:: (nodes[t].vote == -1) -> c1 = 1;
     		:: else -> c1 = 0;
     		fi;
     		
