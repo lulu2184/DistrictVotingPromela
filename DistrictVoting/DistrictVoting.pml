@@ -13,10 +13,13 @@ typedef Node {
 	int reqNodes[N];		/* A queue for node which has asked this node for CS access. (-1 for empty slot) */
 	int reqTimestamp[N];	/* Timestamp for requests in the queue (reqNodes) */
 	int vote;				/* The id of the node which it gave the vote to. (-1 if the vote is still on its hand) */
+	int voteTS;				/* The timestamp of the request which it gave the vote to. */
 	int voteCount;			/* The number of votes it has got for its requests. */
 	int neighb[neighborNum];/* Neighbors in the same district */
 	int earliestReqIndex;
 	int reqCount;
+	int reqTime;
+	bit inquired;
 };
 
 chan c[N] = [neighborNum * 3] of {mtype, int, int};
@@ -106,6 +109,16 @@ inline grant(nid, ind) {
 	c[nodes[nid].reqNodes[ind]]!GRANT(nid, 0);
 	nodes[nid].reqNodes[ind] = -1;
 	nodes[nid].reqCount = nodes[nid].reqCount - 1;
+	nodes[nid].inquired = 0;
+}
+
+inline inquire(nid) {
+	if
+		:: (nodes[nid].inquired == 0) ->
+			c[nodes[nid].vote]!INQUIRE(nid, 0);
+			nodes[nid].inquired = 1;
+		:: else -> skip;
+	fi;
 }
 
 inline processRequest(nid, src, ts) {
@@ -116,6 +129,8 @@ inline tryGrant(nid) {
 	atomic {
 		getEarliestRequest(nid);
 		if
+		:: (nodes[nid].reqTimestamp[nodes[nid].earliestReqIndex] < nodes[nid].voteTS) ->
+			inquire(nid);
 		:: (nodes[nid].earliestReqIndex >= 0) ->
 			grant(nid, nodes[nid].earliestReqIndex);
 		:: else -> skip;
@@ -136,6 +151,23 @@ inline processGrant(nid, src) {
 	}
 }
 
+inline processInquire(nid, src) {
+	atomic {
+		if
+		:: (nodes[nid].inCS == 0) ->
+			c[src]!RELINQUISH(nid, nodes[nid].reqTime);
+		:: else -> skip;
+		fi;
+	}
+}
+
+inline processRelinquish(nid, src, ts) {
+	atomic {
+		insertRequest(nid, src, ts);
+		nodes[nid].vote = -1;
+	}
+}
+
 inline processRelease(nid, source) {
 	nodes[nid].vote = -1;
 }
@@ -148,6 +180,7 @@ inline requestCS(nid) {
 			c[nodes[nid].neighb[i]]!REQUEST(nid, currentTime);
 		}
 		nodes[nid].csTimes++;
+		nodes[nid].reqTime = currentTime;
 		updateTotalCSTimes();
 	}
 }
@@ -159,7 +192,7 @@ inline exitCS(nid) {
 			c[nodes[nid].neighb[i]]!RELEASE(nid, 0);
 		}
 		nodes[nid].inCS = 0;
-		nodes[nid].voteCount = 0; 
+		nodes[nid].voteCount = 0;
 	}
 }
 
@@ -174,9 +207,11 @@ proctype Processor(int nid) {
 		:: type == REQUEST -> processRequest(nid, source, ts);
 		:: type == GRANT -> processGrant(nid, source);
 		:: type == RELEASE -> nodes[nid].vote = -1;
+		:: type == INQUIRE -> processInquire(nid, source);
+		:: type == RELINQUISH -> processRelinquish(nid, source, ts);
 		fi
 	:: (nodes[nid].csTimes < reqLimit) -> requestCS(nid);
-	:: (nodes[nid].inCS == 1) -> exitCS(nid); 
+	:: (nodes[nid].inCS == 1) -> exitCS(nid);
 	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
 	:: (totalCSTimes == N && nodes[nid].reqCount == 0 && len(c[nid]) == 0) ->
 		end: skip;
