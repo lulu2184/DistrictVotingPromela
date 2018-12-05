@@ -20,6 +20,7 @@ typedef Node {
 	byte reqCount;
 	byte reqTime;
 	bit inquired;
+	byte recVote[N];
 };
 
 chan c[N] = [neighborNum * 3] of {mtype, byte, byte};
@@ -29,6 +30,7 @@ byte numInCS = 0;
 bit start = 0;
 byte totalCSTimes = 0;
 byte votes = 0;
+byte votesInChannel[N];
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 ltl alwaysAtMostOneVote { [](votes <= N) }
@@ -47,17 +49,17 @@ inline updateNumInCS() {
 }
 
 inline sum_votes() {
-	d_step {
+	atomic {
 		votes = 0;
-		byte i;
+		byte t;
 		byte j;
-    	for (i in nodes) {
+    	for (t in nodes) {
     		if
-    		:: (nodes[i].vote == -1) -> votes = votes+1;
+    		:: (nodes[t].vote == -1) -> votes = votes+1;
     		fi;
-    		for(j in reqNodes){
+    		for(j in nodes[t].reqNodes){
     			if
-    			:: (i == nodes[nodes[i].reqNodes[j]].vote) -> votes = votes+1;
+    			:: (t == nodes[nodes[t].reqNodes[j]].vote) -> votes = votes+1;
     			fi;
     		}
     	}
@@ -107,6 +109,7 @@ inline insertRequest(nid, src, ts) {
 inline grant(nid, ind) {
 	nodes[nid].vote = nodes[nid].reqNodes[ind];
 	c[nodes[nid].reqNodes[ind]]!GRANT(nid, 0);
+	votesInChannel[nid]++;
 	nodes[nid].reqNodes[ind] = -1;
 	nodes[nid].reqCount = nodes[nid].reqCount - 1;
 	nodes[nid].inquired = 0;
@@ -118,6 +121,7 @@ inline inquire(nid) {
 		:: (nodes[nid].inquired == 0) ->
 			c[nodes[nid].vote]!INQUIRE(nid, 0);
 			nodes[nid].inquired = 1;
+			sum_votes();
 		:: else -> skip;
 	fi;
 }
@@ -141,14 +145,17 @@ inline tryGrant(nid) {
 
 inline processGrant(nid, src) {
 	atomic {
+		votesInChannel[src]--;
 		nodes[nid].voteCount++;
 		if
 		:: (nodes[nid].voteCount == neighborNum) ->
 			nodes[nid].inCS = 1;
 			nodes[nid].voteCount = 0;
+			nodes[nid].recVote[src] = 1;
 			updateNumInCS();
 		:: else -> skip;
 		fi;
+		sum_votes();
 	}
 }
 
@@ -157,6 +164,9 @@ inline processInquire(nid, src) {
 		if
 		:: (nodes[nid].inCS == 0) ->
 			c[src]!RELINQUISH(nid, nodes[nid].reqTime);
+			votesInChannel[src]++;
+			nodes[nid].recVote[src] = 0;
+			sum_votes();
 		:: else -> skip;
 		fi;
 	}
@@ -164,13 +174,19 @@ inline processInquire(nid, src) {
 
 inline processRelinquish(nid, src, ts) {
 	atomic {
+		votesInChannel[nid]--;
 		insertRequest(nid, src, ts);
 		nodes[nid].vote = -1;
+		sum_votes();
 	}
 }
 
 inline processRelease(nid, source) {
-	nodes[nid].vote = -1;
+	atomic {
+		nodes[nid].vote = -1;
+		votesInChannel[nid]--;
+		sum_votes();
+	}
 }
 
 inline requestCS(nid) {
@@ -191,9 +207,12 @@ inline exitCS(nid) {
 		int i = 0;
 		for (i : 0 .. (neighborNum - 1)) {
 			c[nodes[nid].neighb[i]]!RELEASE(nid, 0);
+			votesInChannel[nodes[nid].neighb[i]]++;
+			nodes[nid].recVote[nodes[nid].neighb[i]] = 0;
 		}
 		nodes[nid].inCS = 0;
 		nodes[nid].voteCount = 0;
+		sum_votes();
 	}
 }
 
@@ -234,6 +253,7 @@ inline setup() {
 		do
 		::	(j < N) ->
 			nodes[i].reqNodes[j] = -1;
+			nodes[i].recVote[j] = 0;
 			j++;
 		::	else -> break;
 		od;
