@@ -32,7 +32,7 @@ byte votes = 0;
 
 ltl alwaysAtMostOneCriticalProcessor { []<>(numInCS<=1) }
 ltl alwaysAtMostOneVote { [](votes <= N) }
-ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N) }
+ltl alwaysEventuallyAccessToCriticalSection { []<>(totalCSTimes == N*reqLimit) }
 
 
 /* For loop to sum inCS field for all nodes. */
