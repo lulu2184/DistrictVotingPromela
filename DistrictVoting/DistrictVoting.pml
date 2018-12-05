@@ -52,15 +52,18 @@ inline sum_votes() {
 		byte i;
 		byte j;
     	for (i in nodes) {
-    		if
+    		if /* count vote on hand */
     		:: (nodes[i].vote == -1) -> votes = votes+1;
     		fi;
-    		for(j in reqNodes){
+    		/* count vote to others */
+    		for(j in nodes[i].recVote){
     			if
-    			:: (i == nodes[nodes[i].reqNodes[j]].vote) -> votes = votes+1;
+    			:: (nodes[i].recVote[j] == 1) -> votes = votes+1;
     			fi;
     		}
     	}
+    	/* count vote in channels */
+    	votes = votes + len(votesInChan[i]);
     }
 }
 
