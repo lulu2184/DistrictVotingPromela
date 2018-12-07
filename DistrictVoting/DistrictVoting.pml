@@ -277,10 +277,7 @@ proctype Processor(byte nid) {
 	:: (nodes[nid].inCS == 1) -> exitCS(nid);
 	:: (nodes[nid].vote == -1 && nodes[nid].reqCount > 0) -> tryGrant(nid);
 	:: (totalCSTimes == N && nodes[nid].reqCount == 0 && len(c[nid]) == 0) ->
-		end: /* end state. */
-			do
-			:: (nodes[nid].reqCount == 0) -> skip;
-			od;
+		break; /* End State. */
 	od;
 }
 
