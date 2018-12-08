@@ -5,8 +5,8 @@ STANDARD SAFETY CHECK: DEADLOCKS AND ASSERTION VIOLATIONS
 Running check... noDeadlock
 
 PASS - No Errors
-PASS - Transitions 3193038
-PASS - States stored 1292754
+PASS - Transitions 2480195
+PASS - States stored 1107004
 PASS - Never claim disabled by safety check
 PASS - No warning issued
 
@@ -21,8 +21,8 @@ CHECKING YOUR OWN PROPERTIES: PROBLEM COVERAGE
 Running check... noDeadLock
 
 PASS - No Errors
-PASS - Transitions 6533140
-PASS - States stored 1647635
+PASS - Transitions 5361100
+PASS - States stored 1425563
 PASS - Never claim disabled by safety check
 PASS - No warning issued
 
@@ -31,8 +31,8 @@ PASS - No warning issued
 Running check... alwaysAtMostOneCriticalProcessor
 
 PASS - No Errors
-PASS - Transitions 3197120
-PASS - States stored 1297584
+PASS - Transitions 2484788
+PASS - States stored 1109500
 PASS - Never claim found
 PASS - No warning issued
 
@@ -41,8 +41,8 @@ PASS - No warning issued
 Running check... alwaysExactlyOneVoteForEachNode
 
 PASS - No Errors
-PASS - Transitions 3197120
-PASS - States stored 1297584
+PASS - Transitions 2484788
+PASS - States stored 1109500
 PASS - Never claim found
 PASS - No warning issued
 
@@ -51,8 +51,8 @@ PASS - No warning issued
 Running check... alwaysEventuallyAccessToCriticalSection
 
 PASS - No Errors
-PASS - Transitions 5902290
-PASS - States stored 1672491
+PASS - Transitions 5189958
+PASS - States stored 1484407
 PASS - Never claim found
 PASS - No warning issued
 
@@ -61,14 +61,11 @@ PASS - No warning issued
 Running check... EventuallyExitCriticalSectionAfterEnter
 
 PASS - No Errors
-PASS - Transitions 3197120
-PASS - States stored 1297584
+PASS - Transitions 2484788
+PASS - States stored 1109500
 PASS - Never claim found
 PASS - No warning issued
 
 =============================
 TOTAL POINTS FOR Model.pml: 2.00
 =============================
-
-
-
